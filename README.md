@@ -1,82 +1,79 @@
-# Real-Time Hand Gesture Recognition System
+# GestureSense — Webcam Hand Gestures
 
-A Flask-based web application that performs real-time static hand gesture recognition using MediaPipe and computer vision techniques.
+A Flask webcam demo that uses MediaPipe hand landmarks and geometric rules to recognize four static gestures, displaying annotated frames in a browser.
 
-## Author
-AI Intern Assessment Submission - Hand Gesture Recognition System
+## What it implements
 
-## Overview
+- Recognize open palm, fist, peace sign and thumbs up.
+- Overlay hand landmarks, bounding boxes and gesture labels.
+- Start or stop the server’s camera through the web interface.
+- Read the latest gesture as JSON.
 
-This application uses a webcam to detect and classify static hand gestures in real-time. It can recognize four distinct gestures: Open Palm, Fist, Peace Sign (V-sign), and Thumbs Up. The system provides visual feedback with bounding boxes around detected hands and displays the recognized gesture name with confidence scores.
+## How it works
 
-## Technology Stack & Justification
+`CameraHandler` captures frames on the machine running Flask. `GestureRecognizer` runs MediaPipe Hands for one hand, then applies finger-position rules. Flask serves multipart JPEG frames through `/video_feed` and JSON through `/gesture_info`.
 
-### Backend Technologies
+## Current limitations
 
-**MediaPipe** - Primary choice for hand detection and landmark extraction
-- **Justification**: MediaPipe offers state-of-the-art hand detection with 21 landmark points per hand. It's optimized for real-time performance and provides accurate hand tracking even in varying lighting conditions. The pre-trained models eliminate the need for custom training data.
-- **Advantages**: 
-  - Real-time performance (30+ FPS)
-  - Accurate hand landmark detection
-  - Cross-platform compatibility
-  - No custom training required
+This is the server’s webcam, not a remote browser camera. The stream stops after at most 100 frames per request. Confidence values such as 0.9 are fixed rule outputs, not calibrated model probabilities. Thumb logic depends on orientation. Camera-control routes have no authentication in the reviewed code.
 
-**OpenCV (cv2)** - Video processing and image manipulation
-- **Justification**: Industry-standard computer vision library that provides efficient video capture, frame processing, and image encoding capabilities.
-- **Use cases**: Webcam integration, frame manipulation, video streaming
+## Run locally
 
-**Flask** - Web framework for real-time streaming
-- **Justification**: Lightweight framework perfect for creating streaming applications with minimal overhead. Provides easy routing for video feeds and API endpoints.
+The commands below were checked against source paths and manifests; application startup was not tested unless explicitly stated.
+Python 3.11 or newer is declared in `pyproject.toml`. Use uv for the checked-in project/lockfile. Set environment variables in the shell or process manager; the Python entry points do not explicitly load `.env`.
 
-**NumPy** - Mathematical operations for gesture classification
-- **Justification**: Essential for efficient numerical computations on landmark coordinates and distance calculations.
+```bash
+git clone --branch main https://github.com/AishwaryaChandel27/GestureSense.git
+cd GestureSense
+uv sync
+uv run python main.py
+```
+Open `http://localhost:5000`. 
 
-### Frontend Technologies
+## Configuration
 
-**Bootstrap 5** - Responsive UI framework
-- **Justification**: Provides a professional, mobile-responsive interface with minimal custom CSS required.
+| Variable | Purpose / requirement |
+| --- | --- |
+| `SESSION_SECRET` | Set a private random value; code otherwise uses a development fallback |
 
-**Vanilla JavaScript** - Real-time UI updates
-- **Justification**: Handles camera controls, gesture status updates, and user interactions without additional framework overhead.
+Use your own credentials. Never commit populated secret values.
 
-## Gesture Recognition Methodology
+## Usage
 
-### Hand Detection Process
-1. **Video Capture**: Real-time video stream from webcam using OpenCV
-2. **Hand Detection**: MediaPipe detects hands and extracts 21 landmark points
-3. **Landmark Analysis**: Extract 3D coordinates for each finger joint and palm
-4. **Gesture Classification**: Rules-based algorithm analyzes finger positions
+Run on a computer with an accessible webcam, open the page, start the camera and hold one gesture in view. Refresh or reconnect when the finite frame stream ends.
 
-### Gesture Classification Logic
+### API example
 
-The system uses a rules-based approach analyzing finger extension states:
+```bash
+curl http://localhost:5000/gesture_info
+```
 
-#### 1. Open Palm
-- **Logic**: All five fingers are extended
-- **Detection Method**: Compare finger tip positions with PIP (Proximal Interphalangeal) joints
-- **Confidence**: High (0.9) when all fingers clearly extended
+The response contains `gesture` and `confidence`. `GET /start_camera` returns a `success` boolean; `GET /stop_camera` stops the shared capture device.
 
-#### 2. Fist
-- **Logic**: All fingers are folded/closed
-- **Detection Method**: All finger tips below their respective PIP joints
-- **Confidence**: High (0.9) when no fingers extended
+## Source map
 
-#### 3. Peace Sign (V-sign)
-- **Logic**: Only index and middle fingers extended
-- **Detection Method**: Index and middle finger tips above PIP joints, other fingers folded
-- **Confidence**: Medium-High (0.85) due to finger occlusion possibilities
+| Path | Responsibility |
+| --- | --- |
+| [app.py](app.py) | Flask routes and finite video stream |
+| [camera_handler.py](camera_handler.py) | OpenCV camera lifecycle |
+| [gesture_recognizer.py](gesture_recognizer.py) | MediaPipe and gesture rules |
+| [static/js/main.js](static/js/main.js) | Browser controls |
+| [templates/index.html](templates/index.html) | UI |
 
-#### 4. Thumbs Up
-- **Logic**: Only thumb extended horizontally
-- **Detection Method**: Thumb tip positioned further from wrist than other thumb joints, all other fingers folded
-- **Confidence**: Medium-High (0.85) due to thumb orientation sensitivity
+## Validation
 
-### Technical Implementation Details
+Documentation was checked against the repository snapshot on 28 October 2026. No application test suite was run for this repository. Provider availability, browser behavior, builds and deployment are unverified.
 
-**Finger Extension Detection**:
-```python
-def is_finger_extended(landmarks, finger_tip, finger_pip, finger_mcp):
-    tip_y = landmarks[finger_tip].y
-    pip_y = landmarks[finger_pip].y
-    mcp_y = landmarks[finger_mcp].y
-    return tip_y < pip_y and tip_y < mcp_y
+## Demo capture
+
+Suggested addition: a short recording of the usage workflow above, with synthetic inputs and visible limitations. No new screenshot or recording was produced in this audit.
+
+## Contributing
+
+Open an issue with reproduction steps or submit a focused pull request. Keep prototype behavior and future plans clearly distinguished, and include verification steps for changes.
+
+## License
+
+No license file was found. A manifest or older README license label does not replace an explicit license grant.
+
+Maintained in [AishwaryaChandel27’s repositories](https://github.com/AishwaryaChandel27).
